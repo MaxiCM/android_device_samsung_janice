@@ -38,12 +38,6 @@ on property:sys.boot_completed=1
     chown system system /sys/kernel/liveopp/arm_step07
     chown system system /sys/kernel/liveopp/arm_step08
     chown system system /sys/kernel/liveopp/arm_step09
-    chown system system /sys/kernel/liveopp/arm_step10
-    chown system system /sys/kernel/liveopp/arm_step11
-    chown system system /sys/kernel/liveopp/arm_step12
-    chown system system /sys/kernel/liveopp/arm_step13
-    chown system system /sys/kernel/liveopp/arm_step14
-    chown system system /sys/kernel/liveopp/arm_step15
     chown system system /sys/kernel/mali/mali_auto_boost
     chown system system /sys/kernel/mali/mali_boost_delay
     chown system system /sys/kernel/mali/mali_boost_high
