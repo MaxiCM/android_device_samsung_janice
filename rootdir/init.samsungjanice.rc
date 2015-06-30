@@ -1,7 +1,7 @@
 import /init.u8500.rc
 
 on fs
-
+    exec /sbin/genfstab
     mount_all /fstab.samsungjanice
     swapon_all /fstab.samsungjanice
 
