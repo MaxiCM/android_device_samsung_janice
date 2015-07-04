@@ -1,8 +1,8 @@
 # Mount point	     fs	          device                                        flags
 /modem            ext4      /dev/block/mmcblk0p2                    flags=display="Modem";backup=1
-/system           auto      /dev/block/mmcblk0p3
-/cache            auto      /dev/block/mmcblk0p4
-/data             auto      /dev/block/mmcblk0p5
+/system           ext4      /dev/block/mmcblk0p3
+/cache            ext4      /dev/block/mmcblk0p4
+/data             ext4      /dev/block/mmcblk0p5
 /efs              ext4      /dev/block/mmcblk0p7                    flags=display="EFS";backup=1
 /preload          ext4      /dev/block/mmcblk0p9                    flags=display="Preload";backup=1;wipeingui
 /sdcard           vfat      /dev/block/mmcblk0p8                    flags=storage;wipeingui
