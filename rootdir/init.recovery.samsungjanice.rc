@@ -6,6 +6,7 @@ on init
 
 on early-fs
     mount ext4 /dev/block/mmcblk0p3 /system noatime wait
+    mount f2fs /dev/block/mmcblk0p3 /system noatime wait
 
     mkdir /efs
     mount ext4 /dev/block/mmcblk0p7 /efs nosuid nodev noatime wait
