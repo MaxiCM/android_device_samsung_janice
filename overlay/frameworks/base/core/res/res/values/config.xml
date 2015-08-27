@@ -69,6 +69,8 @@
     <!--  Maximum number of supported users -->
     <integer name="config_multiuserMaximumUsers">4</integer>
     
+    <!-- Whether UI for multi user should be shown -->
+    <bool name="config_enableMultiUserUI">true</bool>
     
     <!-- Whether WiFi display is supported by this device.
          There are many prerequisites for this feature to work correctly.
