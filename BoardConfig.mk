@@ -5,7 +5,7 @@ TARGET_OTA_ASSERT_DEVICE := janice,i9070,GT-I9070
 # Kernel
 TARGET_KERNEL_SOURCE := kernel/samsung/u8500
 TARGET_KERNEL_CONFIG := janice_defconfig
-TARGET_KERNEL_CUSTOM_TOOLCHAIN := arm-eabi-4.9
+KERNEL_TOOLCHAIN := $(ANDROID_BUILD_TOP)/prebuilts/gcc/linux-x86/arm/arm-eabi-4.9/bin
 
 # Bluetooth
 BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := device/samsung/janice/bluetooth
