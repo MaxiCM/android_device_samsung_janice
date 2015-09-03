@@ -1,0 +1,208 @@
+From df114b92051a8923344a025a4d79bb5e03ffb6c8 Mon Sep 17 00:00:00 2001
+From: Epirex <estebanguzzo@gmail.com>
+Date: Mon, 31 Aug 2015 18:05:16 -0300
+Subject: [PATCH] STE Multimedia Fix [3/4]
+
+---
+ healthd/Android.mk          |  4 ++--
+ include/utils/Flattenable.h | 22 ++++++++++++++++++++++
+ init/Android.mk             | 12 ++++++++++--
+ init/init.c                 | 10 +++++++++-
+ libutils/Android.mk         |  6 ++++++
+ libutils/Flattenable.cpp    | 24 ++++++++++++++++++++++++
+ 6 files changed, 73 insertions(+), 5 deletions(-)
+ create mode 100644 libutils/Flattenable.cpp
+
+diff --git a/healthd/Android.mk b/healthd/Android.mk
+index cd2f170..9153c0a 100644
+--- a/healthd/Android.mk
++++ b/healthd/Android.mk
+@@ -67,9 +67,9 @@ endif
+ 
+ LOCAL_HAL_STATIC_LIBRARIES := libhealthd
+ 
+-# Symlink /charger to /sbin/healthd
++# Symlink /charger to /sbin/charger
+ LOCAL_POST_INSTALL_CMD := $(hide) mkdir -p $(TARGET_ROOT_OUT) \
+-    && rm -f $(TARGET_ROOT_OUT)/charger && ln -sf /sbin/healthd $(TARGET_ROOT_OUT)/charger
++    && ln -sf /sbin/charger $(TARGET_ROOT_OUT)/charger
+ 
+ include $(BUILD_EXECUTABLE)
+ 
+diff --git a/include/utils/Flattenable.h b/include/utils/Flattenable.h
+index 882a8b2..495b90d 100644
+--- a/include/utils/Flattenable.h
++++ b/include/utils/Flattenable.h
+@@ -79,21 +79,35 @@ public:
+  * Flattenable objects must implement this protocol.
+  */
+ 
++#ifndef STE_HARDWARE
+ template <typename T>
++#endif
+ class Flattenable {
+ public:
+     // size in bytes of the flattened object
++#ifdef STE_HARDWARE
++    virtual size_t getFlattenedSize() const = 0;
++#else
+     inline size_t getFlattenedSize() const;
++#endif
+ 
+     // number of file descriptors to flatten
++#ifdef STE_HARDWARE
++    virtual size_t getFdCount() const = 0;
++#else
+     inline size_t getFdCount() const;
++#endif
+ 
+     // flattens the object into buffer.
+     // size should be at least of getFlattenedSize()
+     // file descriptors are written in the fds[] array but ownership is
+     // not transfered (ie: they must be dupped by the caller of
+     // flatten() if needed).
++#ifdef STE_HARDWARE
++    virtual status_t flatten(void*& buffer, size_t& size, int*& fds, size_t& count) const = 0;
++#else
+     inline status_t flatten(void*& buffer, size_t& size, int*& fds, size_t& count) const;
++#endif
+ 
+     // unflattens the object from buffer.
+     // size should be equal to the value of getFlattenedSize() when the
+@@ -102,6 +116,13 @@ public:
+     // don't need to be dupped(). ie: the caller of unflatten doesn't
+     // keep ownership. If a fd is not retained by unflatten() it must be
+     // explicitly closed.
++#ifdef STE_HARDWARE
++    virtual status_t unflatten(void const*& buffer, size_t& size, int const*& fds, size_t& count) = 0;
++
++protected:
++    virtual ~Flattenable() = 0;
++};
++#else
+     inline status_t unflatten(void const*& buffer, size_t& size, int const*& fds, size_t& count);
+ };
+ 
+@@ -123,6 +144,7 @@ inline status_t Flattenable<T>::unflatten(
+         void const*& buffer, size_t& size, int const*& fds, size_t& count) {
+     return static_cast<T*>(this)->T::unflatten(buffer, size, fds, count);
+ }
++#endif
+ 
+ /*
+  * LightFlattenable is a protocol allowing object to serialize themselves out
+diff --git a/init/Android.mk b/init/Android.mk
+index c6863bf..278f827 100755
+--- a/init/Android.mk
++++ b/init/Android.mk
+@@ -33,8 +33,8 @@ endif
+ #LOCAL_CFLAGS += -DLOG_UEVENTS=1
+ 
+ SYSTEM_CORE_INIT_DEFINES := BOARD_CHARGING_MODE_BOOTING_LPM \
+-    BOARD_CHARGING_CMDLINE_NAME \
+-    BOARD_CHARGING_CMDLINE_VALUE
++    BOARD_LPM_BOOT_ARGUMENT_NAME \
++    BOARD_LPM_BOOT_ARGUMENT_VALUE
+ 
+ $(foreach system_core_init_define,$(SYSTEM_CORE_INIT_DEFINES), \
+   $(if $($(system_core_init_define)), \
+@@ -46,6 +46,14 @@ ifneq ($(TARGET_NR_SVC_SUPP_GIDS),)
+ LOCAL_CFLAGS += -DNR_SVC_SUPP_GIDS=$(TARGET_NR_SVC_SUPP_GIDS)
+ endif
+ 
++SYSTEM_CORE_INIT_DEFINES := BOARD_CHARGING_MODE_BOOTING_LPM
++
++$(foreach system_core_init_define,$(SYSTEM_CORE_INIT_DEFINES), \
++  $(if $($(system_core_init_define)), \
++    $(eval LOCAL_CFLAGS += -D$(system_core_init_define)=\"$($(system_core_init_define))\") \
++  ) \
++)
++
+ LOCAL_MODULE:= init
+ 
+ LOCAL_FORCE_STATIC_EXECUTABLE := true
+diff --git a/init/init.c b/init/init.c
+index 8a7427d..30b87c8 100644
+--- a/init/init.c
++++ b/init/init.c
+@@ -101,6 +101,8 @@ static const char *ENV[32];
+ 
+ static unsigned charging_mode = 0;
+ 
++static unsigned lpm_bootmode = 0;
++
+ /* add_environment - add "key=value" to the current environment */
+ int add_environment(const char *key, const char *val)
+ {
+@@ -739,6 +741,12 @@ static void import_kernel_nv(char *name, int for_emulator)
+ 
+     if (!strcmp(name,"qemu")) {
+         strlcpy(qemu, value, sizeof(qemu));
++#ifdef BOARD_LPM_BOOT_ARGUMENT_NAME
++    } else if (!strcmp(name,BOARD_LPM_BOOT_ARGUMENT_NAME)) {
++        if (!strcmp(value,BOARD_LPM_BOOT_ARGUMENT_VALUE)) {
++            lpm_bootmode = 1;
++        }
++#endif
+     } else if (!strcmp(name,BOARD_CHARGING_CMDLINE_NAME)) {
+         strlcpy(battchg_pause, value, sizeof(battchg_pause));
+     } else if (!strncmp(name, "androidboot.", 12) && name_len > 12) {
+@@ -1014,7 +1022,7 @@ static void selinux_initialize(void)
+ static int charging_mode_booting(void)
+ {
+ #ifndef BOARD_CHARGING_MODE_BOOTING_LPM
+-    return 0;
++    return lpm_bootmode;
+ #else
+     int f;
+     char cmb;
+diff --git a/libutils/Android.mk b/libutils/Android.mk
+index b1dc1f8..44f69c1 100644
+--- a/libutils/Android.mk
++++ b/libutils/Android.mk
+@@ -44,6 +44,12 @@ commonSources:= \
+ 	VectorImpl.cpp \
+ 	misc.cpp
+ 
++
++ifeq ($(BOARD_USES_STE_HARDWARE),true)
++	commonSources += Flattenable.cpp
++endif
++
++
+ host_commonCflags := -DLIBUTILS_NATIVE=1 $(TOOL_CFLAGS) -Werror
+ 
+ ifeq ($(HOST_OS),windows)
+diff --git a/libutils/Flattenable.cpp b/libutils/Flattenable.cpp
+new file mode 100644
+index 0000000..1f2ffaa
+--- /dev/null
++++ b/libutils/Flattenable.cpp
+@@ -0,0 +1,24 @@
++/*
++ * Copyright (C) 2006 The Android Open Source Project
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++#include <utils/Flattenable.h>
++
++namespace android {
++
++Flattenable::~Flattenable() {
++}
++
++}; // namespace android
+-- 
+2.1.0
+
