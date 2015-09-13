@@ -3,6 +3,7 @@ on init
     export LD_LIBRARY_PATH .:/sbin
 
     write /sys/devices/platform/ab8500-i2c.0/ab8500-usb.0/boot_time_device 1
+    write /sys/devices/platform/mcde_fb/graphics/fb0/bits_per_pixel 32
 
 on early-fs
     mount ext4 /dev/block/mmcblk0p3 /system noatime wait
@@ -29,9 +30,9 @@ on property:ro.debuggable=1
     write /sys/class/android_usb/android0/idProduct 6860
     write /sys/class/android_usb/android0/functions adb
     write /sys/class/android_usb/android0/enable 1
-    write /sys/class/android_usb/android0/iManufacturer $ro.product.manufacturer
-    write /sys/class/android_usb/android0/iProduct $ro.product.model
-    write /sys/class/android_usb/android0/iSerial $ro.serialno
+    write /sys/class/android_usb/android0/iManufacturer ${ro.product.manufacturer}
+    write /sys/class/android_usb/android0/iProduct ${ro.product.model}
+    write /sys/class/android_usb/android0/iSerial ${ro.serialno}
     write /sys/devices/platform/ab8500-i2c.0/ab8500-usb.0/boot_time_device 1
     start adbd
     setprop service.adb.root 1
