@@ -61,15 +61,15 @@ index b57b491..df23858 100644
 diff --git a/media/libstagefright/ACodec.cpp b/media/libstagefright/ACodec.cpp
 old mode 100644
 new mode 100755
-index a110eae..4c1c036
+index a110eae..2465775
 --- a/media/libstagefright/ACodec.cpp
 +++ b/media/libstagefright/ACodec.cpp
-@@ -603,11 +603,15 @@ status_t ACodec::allocateBuffersOnPort(OMX_U32 portIndex) {
+@@ -603,11 +603,16 @@ status_t ACodec::allocateBuffersOnPort(OMX_U32 portIndex) {
  
      status_t err;
      if (mNativeWindow != NULL && portIndex == kPortIndexOutput) {
-+/* Fix video streaming */
 +#ifdef STE_HARDWARE
++        /* Fix video streaming */
 +	err = allocateOutputBuffersFromNativeWindow();
 +#else
          if (mStoreMetaDataInOutputBuffers) {
@@ -81,7 +81,7 @@ index a110eae..4c1c036
      } else {
          OMX_PARAM_PORTDEFINITIONTYPE def;
          InitOMXParams(&def);
-@@ -737,7 +741,11 @@ status_t ACodec::configureOutputBuffersFromNativeWindow(
+@@ -737,7 +742,11 @@ status_t ACodec::configureOutputBuffersFromNativeWindow(
              mNativeWindow.get(),
              def.format.video.nFrameWidth,
              def.format.video.nFrameHeight,
@@ -93,7 +93,7 @@ index a110eae..4c1c036
  #endif
  
      if (err != 0) {
-@@ -1362,6 +1370,15 @@ status_t ACodec::configureCodec(
+@@ -1362,6 +1371,12 @@ status_t ACodec::configureCodec(
      sp<AMessage> outputFormat = mNotify->dup(); // will use this for kWhatOutputFormatChanged
  
      mIsEncoder = encoder;
@@ -106,7 +106,7 @@ index a110eae..4c1c036
  
      status_t err = setComponentRole(encoder /* isEncoder */, mime);
  
-@@ -4961,7 +4978,7 @@ bool ACodec::BaseState::onOMXFillBufferDone(
+@@ -4961,7 +4976,7 @@ bool ACodec::BaseState::onOMXFillBufferDone(
                  mCodec->mSkipCutBuffer->submit(info->mData);
              }
              info->mData->meta()->setInt64("timeUs", timeUs);
@@ -175,16 +175,16 @@ index 54ebb6c..7d9851e 100644
  const char *MEDIA_MIMETYPE_AUDIO_AMR_NB = "audio/3gpp";
  const char *MEDIA_MIMETYPE_AUDIO_AMR_WB = "audio/amr-wb";
 diff --git a/media/libstagefright/OMXClient.cpp b/media/libstagefright/OMXClient.cpp
-index 47455ca..628d8d9 100644
+index 47455ca..1c49be2 100644
 --- a/media/libstagefright/OMXClient.cpp
 +++ b/media/libstagefright/OMXClient.cpp
-@@ -257,7 +261,23 @@ status_t MuxOMX::sendCommand(
+@@ -257,7 +257,18 @@ status_t MuxOMX::sendCommand(
  status_t MuxOMX::getParameter(
          node_id node, OMX_INDEXTYPE index,
          void *params, size_t size) {
-    return getOMX(node)->getParameter(node, index, params, size);
-+/* Fix getSupportedProfileLevel */
+-    return getOMX(node)->getParameter(node, index, params, size);
 +#ifdef STE_HARDWARE
++        /* Fix getSupportedProfileLevel */
 +	if(index == OMX_IndexParamVideoProfileLevelQuerySupported){
 +		OMX_VIDEO_PARAM_PROFILELEVELTYPE *pt = (OMX_VIDEO_PARAM_PROFILELEVELTYPE *)params;
 +		ALOGI("Meticulus: eProfile=%lu eLevel=%lu nProfileIndex=%lu\n",pt->eProfile, pt->eLevel, pt->nProfileIndex);
@@ -194,6 +194,7 @@ index 47455ca..628d8d9 100644
 +		
 +	}
 +#endif
++    	return getOMX(node)->getParameter(node, index, params, size);
  }
  
  status_t MuxOMX::setParameter(
@@ -470,15 +471,15 @@ index 597167f..a85ad72 100644
      static const signed kClipMin = -278;
      static const signed kClipMax = 535;
 diff --git a/media/libstagefright/omx/OMXNodeInstance.cpp b/media/libstagefright/omx/OMXNodeInstance.cpp
-index 83433de..6479bea 100644
+index 83433de..e829220 100644
 --- a/media/libstagefright/omx/OMXNodeInstance.cpp
 +++ b/media/libstagefright/omx/OMXNodeInstance.cpp
-@@ -718,13 +718,20 @@ status_t OMXNodeInstance::useGraphicBuffer(
+@@ -718,13 +718,15 @@ status_t OMXNodeInstance::useGraphicBuffer(
  
      // See if the newer version of the extension is present.
      OMX_INDEXTYPE index;
-+/* Use graphicbuffer optimize */
 +#ifndef STE_HARDWARE
++    /* Use graphicbuffer optimize */
      if (OMX_GetExtensionIndex(
              mHandle,
              const_cast<OMX_STRING>("OMX.google.android.index.useAndroidNativeBuffer2"),
@@ -554,10 +555,10 @@ index 8b48764..a19d0a0 100644
              mPrimaryHardwareDev = thread->getOutput()->audioHwDev;
  
 diff --git a/services/audiopolicy/AudioPolicyService.cpp b/services/audiopolicy/AudioPolicyService.cpp
-index 3079454..bee7937 100644
+index 3079454..b82c4c7 100644
 --- a/services/audiopolicy/AudioPolicyService.cpp
 +++ b/services/audiopolicy/AudioPolicyService.cpp
-@@ -958,6 +958,8 @@ void AudioPolicyService::setParameters(audio_io_handle_t ioHandle,
+@@ -958,6 +958,9 @@ void AudioPolicyService::setParameters(audio_io_handle_t ioHandle,
                                         const char *keyValuePairs,
                                         int delayMs)
  {
