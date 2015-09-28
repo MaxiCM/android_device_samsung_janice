@@ -61,13 +61,14 @@ index b57b491..df23858 100644
 diff --git a/media/libstagefright/ACodec.cpp b/media/libstagefright/ACodec.cpp
 old mode 100644
 new mode 100755
-index 17f641d..3b762ad
+index a110eae..4c1c036
 --- a/media/libstagefright/ACodec.cpp
 +++ b/media/libstagefright/ACodec.cpp
 @@ -603,11 +603,15 @@ status_t ACodec::allocateBuffersOnPort(OMX_U32 portIndex) {
  
      status_t err;
      if (mNativeWindow != NULL && portIndex == kPortIndexOutput) {
++/* Fix video streaming */
 +#ifdef STE_HARDWARE
 +	err = allocateOutputBuffersFromNativeWindow();
 +#else
@@ -92,10 +93,11 @@ index 17f641d..3b762ad
  #endif
  
      if (err != 0) {
-@@ -1361,6 +1369,15 @@ status_t ACodec::configureCodec(
+@@ -1362,6 +1370,15 @@ status_t ACodec::configureCodec(
      sp<AMessage> outputFormat = mNotify->dup(); // will use this for kWhatOutputFormatChanged
  
      mIsEncoder = encoder;
++    /* Fix don't configure software encoders/decoders */
 +    if(strncmp("OMX.google.h264", mComponentName.c_str(), 15) == 0
 +       || strncmp("OMX.ffmpeg.h264", mComponentName.c_str(), 15) == 0){
 +	ALOGI("Meticulus: Soft codec %s detected, skipping configureCodec\n", mComponentName.c_str());
@@ -104,7 +106,7 @@ index 17f641d..3b762ad
  
      status_t err = setComponentRole(encoder /* isEncoder */, mime);
  
-@@ -4963,7 +4980,7 @@ bool ACodec::BaseState::onOMXFillBufferDone(
+@@ -4961,7 +4978,7 @@ bool ACodec::BaseState::onOMXFillBufferDone(
                  mCodec->mSkipCutBuffer->submit(info->mData);
              }
              info->mData->meta()->setInt64("timeUs", timeUs);
@@ -114,10 +116,10 @@ index 17f641d..3b762ad
              sp<AMessage> notify = mCodec->mNotify->dup();
              notify->setInt32("what", CodecBase::kWhatDrainThisBuffer);
 diff --git a/media/libstagefright/CameraSource.cpp b/media/libstagefright/CameraSource.cpp
-index 3671aac..bd31c2e 100644
+index 006ef5e..f613702 100644
 --- a/media/libstagefright/CameraSource.cpp
 +++ b/media/libstagefright/CameraSource.cpp
-@@ -128,6 +128,12 @@ static int32_t getColorFormat(const char* colorFormat) {
+@@ -135,6 +135,12 @@ static int32_t getColorFormat(const char* colorFormat) {
         return OMX_TI_COLOR_FormatYUV420PackedSemiPlanar;
      }
  
@@ -130,7 +132,7 @@ index 3671aac..bd31c2e 100644
      if (!strcmp(colorFormat, CameraParameters::PIXEL_FORMAT_ANDROID_OPAQUE)) {
          return OMX_COLOR_FormatAndroidOpaque;
      }
-@@ -577,13 +583,22 @@ status_t CameraSource::initWithCameraAccess(
+@@ -584,13 +590,22 @@ status_t CameraSource::initWithCameraAccess(
  
      // XXX: query camera for the stride and slice height
      // when the capability becomes available.
@@ -176,22 +178,12 @@ diff --git a/media/libstagefright/OMXClient.cpp b/media/libstagefright/OMXClient
 index 47455ca..628d8d9 100644
 --- a/media/libstagefright/OMXClient.cpp
 +++ b/media/libstagefright/OMXClient.cpp
-@@ -30,6 +30,10 @@
- #include <utils/KeyedVector.h>
- 
- #include "include/OMX.h"
-+#ifdef STE_HARDWARE
-+#include <OMX_Video.h>
-+#include <OMX_Index.h>
-+#endif
- 
- namespace android {
- 
 @@ -257,7 +261,23 @@ status_t MuxOMX::sendCommand(
  status_t MuxOMX::getParameter(
          node_id node, OMX_INDEXTYPE index,
          void *params, size_t size) {
     return getOMX(node)->getParameter(node, index, params, size);
++/* Fix getSupportedProfileLevel */
 +#ifdef STE_HARDWARE
 +	if(index == OMX_IndexParamVideoProfileLevelQuerySupported){
 +		OMX_VIDEO_PARAM_PROFILELEVELTYPE *pt = (OMX_VIDEO_PARAM_PROFILELEVELTYPE *)params;
@@ -206,7 +198,7 @@ index 47455ca..628d8d9 100644
  
  status_t MuxOMX::setParameter(
 diff --git a/media/libstagefright/OMXCodec.cpp b/media/libstagefright/OMXCodec.cpp
-index b177fbe..2cd7be3 100644
+index 79a5864..dd9cb0c 100644
 --- a/media/libstagefright/OMXCodec.cpp
 +++ b/media/libstagefright/OMXCodec.cpp
 @@ -315,6 +315,20 @@ static int CompareSoftwareCodecsFirst(
@@ -242,7 +234,7 @@ index b177fbe..2cd7be3 100644
  #ifdef ENABLE_AV_ENHANCEMENTS
      quirks |= ExtendedCodec::getComponentQuirks(info);
  #endif
-@@ -1101,6 +1120,10 @@ static size_t getFrameSize(
+@@ -1122,6 +1141,10 @@ static size_t getFrameSize(
          case OMX_COLOR_FormatYUV420Planar:
          case OMX_COLOR_FormatYUV420SemiPlanar:
          case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:
@@ -253,7 +245,7 @@ index b177fbe..2cd7be3 100644
          /*
          * FIXME: For the Opaque color format, the frame size does not
          * need to be (w*h*3)/2. It just needs to
-@@ -1887,6 +1910,10 @@ void OMXCodec::setComponentRole(
+@@ -1908,6 +1931,10 @@ void OMXCodec::setComponentRole(
              "video_decoder.mpeg4", NULL },
          { MEDIA_MIMETYPE_VIDEO_H263,
              "video_decoder.h263", "video_encoder.h263" },
@@ -264,7 +256,7 @@ index b177fbe..2cd7be3 100644
          { MEDIA_MIMETYPE_VIDEO_VP8,
              "video_decoder.vp8", "video_encoder.vp8" },
          { MEDIA_MIMETYPE_VIDEO_VP9,
-@@ -1987,6 +2014,16 @@ status_t OMXCodec::init() {
+@@ -2008,6 +2035,16 @@ status_t OMXCodec::init() {
      CHECK_EQ((int)mState, (int)LOADED);
  
      status_t err;
@@ -281,7 +273,7 @@ index b177fbe..2cd7be3 100644
      if (!(mQuirks & kRequiresLoadedToIdleAfterAllocation)) {
          err = mOMX->sendCommand(mNode, OMX_CommandStateSet, OMX_StateIdle);
          CHECK_EQ(err, (status_t)OK);
-@@ -2049,7 +2086,12 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
+@@ -2070,7 +2107,12 @@ status_t OMXCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
      }
  
      status_t err = OK;
@@ -294,7 +286,7 @@ index b177fbe..2cd7be3 100644
              && portIndex == kPortIndexInput) {
          err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexInput, OMX_TRUE);
          if (err != OK) {
-@@ -2274,6 +2316,12 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
+@@ -2295,6 +2337,12 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
              frameWidth,
              frameHeight,
              def.format.video.eColorFormat);
@@ -478,13 +470,14 @@ index 597167f..a85ad72 100644
      static const signed kClipMin = -278;
      static const signed kClipMax = 535;
 diff --git a/media/libstagefright/omx/OMXNodeInstance.cpp b/media/libstagefright/omx/OMXNodeInstance.cpp
-index e3a1bd3..85fdc9d 100644
+index 83433de..6479bea 100644
 --- a/media/libstagefright/omx/OMXNodeInstance.cpp
 +++ b/media/libstagefright/omx/OMXNodeInstance.cpp
 @@ -718,13 +718,20 @@ status_t OMXNodeInstance::useGraphicBuffer(
  
      // See if the newer version of the extension is present.
      OMX_INDEXTYPE index;
++/* Use graphicbuffer optimize */
 +#ifndef STE_HARDWARE
      if (OMX_GetExtensionIndex(
              mHandle,
@@ -568,6 +561,7 @@ index 3079454..bee7937 100644
                                         const char *keyValuePairs,
                                         int delayMs)
  {
++    /* Fix no VoIP audio */
 +    ALOGI("Meticulus: params=%s",keyValuePairs);
 +    if(strcmp("voip=on",keyValuePairs) == 0) return;
      mAudioCommandThread->parametersCommand(ioHandle, keyValuePairs,

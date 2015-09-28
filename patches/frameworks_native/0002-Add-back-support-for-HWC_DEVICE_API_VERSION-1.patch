@@ -1549,10 +1549,10 @@ index 0d8b009..f1193fd 100755
          // NOTE: buffer can be NULL if the client never drew into this
          // layer yet, or if we ran out of memory
 diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
-index 9aa0f54..c90d3f1 100644
+index 643f930..019e74c 100644
 --- a/services/surfaceflinger/SurfaceFlinger.cpp
 +++ b/services/surfaceflinger/SurfaceFlinger.cpp
-@@ -1269,8 +1269,10 @@ void SurfaceFlinger::setUpHWComposer() {
+@@ -1271,8 +1271,10 @@ void SurfaceFlinger::setUpHWComposer() {
                  for (size_t i=0 ; cur!=end && i<count ; ++i, ++cur) {
                      const sp<Layer>& layer(currentLayers[i]);
                      if (layer->isPotentialCursor()) {

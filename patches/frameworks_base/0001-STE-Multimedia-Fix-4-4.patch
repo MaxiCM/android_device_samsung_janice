@@ -1,3 +1,18 @@
+diff --git a/core/jni/android_media_AudioRecord.cpp b/core/jni/android_media_AudioRecord.cpp
+index a8020b4..ae6b01b 100644
+--- a/core/jni/android_media_AudioRecord.cpp
++++ b/core/jni/android_media_AudioRecord.cpp
+@@ -219,6 +219,9 @@ android_media_AudioRecord_setup(JNIEnv *env, jobject thiz, jobject weak_this,
+     paa->source = (audio_source_t) env->GetIntField(jaa, javaAudioAttrFields.fieldRecSource);
+     paa->flags = (audio_flags_mask_t)env->GetIntField(jaa, javaAudioAttrFields.fieldFlags);
+
++    /* Fix OK Google */
++    if (paa->source == 1999)
++    	paa->source == (audio_source_t)1;
++
+     //overwrite bytesPerSample for compress VOIP use cases
+     if ((paa->source == AUDIO_SOURCE_VOICE_COMMUNICATION) &&
+         (format != AUDIO_FORMAT_PCM_16_BIT)) {
 diff --git a/libs/hwui/LayerRenderer.cpp b/libs/hwui/LayerRenderer.cpp
 index 83f9c6a..d41baf2 100644
 --- a/libs/hwui/LayerRenderer.cpp
@@ -5,7 +20,8 @@ index 83f9c6a..d41baf2 100644
 @@ -196,6 +196,12 @@ Layer* LayerRenderer::createRenderLayer(RenderState& renderState, uint32_t width
          return NULL;
      }
- 
+
++    /* Fix Dialer crash */
 +    if (width == 0 && height == 0) {
 +        ALOGW("Trying to obtain a zero-size layer, setting fall-back size 512x768");
 +        width = 512;
@@ -15,32 +31,20 @@ index 83f9c6a..d41baf2 100644
      caches.activeTexture(0);
      Layer* layer = caches.layerCache.get(renderState, width, height);
      if (!layer) {
-diff --git a/core/jni/android_media_AudioRecord.cpp b/core/jni/android_media_AudioRecord.cpp
-index a8020b4..b03748a 100644
---- a/core/jni/android_media_AudioRecord.cpp
-+++ b/core/jni/android_media_AudioRecord.cpp
-@@ -218,6 +218,9 @@ android_media_AudioRecord_setup(JNIEnv *env, jobject thiz, jobject weak_this,
-     env->ReleaseStringUTFChars(jtags, tags);
-     paa->source = (audio_source_t) env->GetIntField(jaa, javaAudioAttrFields.fieldRecSource);
-     paa->flags = (audio_flags_mask_t)env->GetIntField(jaa, javaAudioAttrFields.fieldFlags);
-+    
-+    if (paa->source == 1999)
-+    	paa->source == (audio_source_t)1;
- 
-     //overwrite bytesPerSample for compress VOIP use cases
-     if ((paa->source == AUDIO_SOURCE_VOICE_COMMUNICATION) &&
 diff --git a/services/core/java/com/android/server/location/GpsLocationProvider.java b/services/core/java/com/android/server/location/GpsLocationProvider.java
-index 8e33822..988cd5c 100644
+index 4e58c6c..e0236da 100644
 --- a/services/core/java/com/android/server/location/GpsLocationProvider.java
 +++ b/services/core/java/com/android/server/location/GpsLocationProvider.java
-@@ -956,11 +956,11 @@ public class GpsLocationProvider implements LocationProviderInterface {
+@@ -1133,12 +1133,12 @@ public class GpsLocationProvider implements LocationProviderInterface {
                  Log.e(TAG, "unable to parse SUPL_PORT: " + portString);
              }
          }
 -        if (mSuplServerHost != null
++       /* Skip GPS init */
 +       /* if (mSuplServerHost != null
                  && mSuplServerPort > TCP_MIN_PORT
-                 && mSuplServerPort <= TCP_MAX_PORT) {
+                 && mSuplServerPort <= TCP_MAX_PORT
+                 && !mLegacyGpsHAL) {
              native_set_agps_server(AGPS_TYPE_SUPL, mSuplServerHost, mSuplServerPort);
 -        }
 +        }*/

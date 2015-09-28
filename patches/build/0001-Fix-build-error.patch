@@ -1,8 +1,8 @@
 diff --git a/tools/releasetools/common.py b/tools/releasetools/common.py
-index 8e49b39..6f7dc41 100755
+index 499e8c2..ca054dd 100755
 --- a/tools/releasetools/common.py
 +++ b/tools/releasetools/common.py
-@@ -1227,6 +1227,10 @@ def ParseCertificate(data):
+@@ -1258,6 +1258,10 @@ def ParseCertificate(data):
  
  def MakeRecoveryPatch(input_dir, output_sink, recovery_img, boot_img,
                        info_dict=None):
