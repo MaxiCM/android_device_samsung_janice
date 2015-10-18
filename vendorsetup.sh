@@ -1,2 +1,3 @@
-add_lunch_combo cm_janice-eng
-add_lunch_combo cm_janice-userdebug
+add_lunch_combo maxi_janice-eng
+add_lunch_combo maxi_janice-userdebug
+add_lunch_combo maxi_janice-user
