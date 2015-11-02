@@ -1,3 +1,17 @@
+diff --git a/core/java/android/hardware/Camera.java b/core/java/android/hardware/Camera.java
+index 1730cdb..16bfd91 100644
+--- a/core/java/android/hardware/Camera.java
++++ b/core/java/android/hardware/Camera.java
+@@ -2901,7 +2901,8 @@ public class Camera {
+          * @return the int value of the parameter
+          */
+         public int getInt(String key) {
+-            return Integer.parseInt(mMap.get(key));
++            /* Fix qcom camera saturation */
++            return Integer.getInteger(mMap.get(key),0);
+         }
+ 
+         /**
 diff --git a/core/jni/android_media_AudioRecord.cpp b/core/jni/android_media_AudioRecord.cpp
 index a8020b4..31aac06 100644
 --- a/core/jni/android_media_AudioRecord.cpp
