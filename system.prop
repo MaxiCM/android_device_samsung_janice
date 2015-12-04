@@ -28,6 +28,9 @@ ste.special_fast_dormancy=false
 ste.cam.front.orientation=270
 ste.cam.back.orientation=90
 
+# OTA
+ro.ota.manifest=http://maxicm.com/janice/ota.xml
+
 # STE: Camera file path configuration
 ste.cam.ext.cfg.path.secondary=/system/usr/share/camera/config_file/samsung_s5k4ecgx_janice.dat
 
