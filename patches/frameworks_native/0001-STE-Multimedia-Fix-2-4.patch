@@ -948,6 +948,68 @@ index ca3f027..643f930 100644
          return result;
      }
  
+diff --git a/include/ui/FramebufferNativeWindow.h b/include/ui/FramebufferNativeWindow.h
+index 5cd8101..14def01 100644
+--- a/include/ui/FramebufferNativeWindow.h
++++ b/include/ui/FramebufferNativeWindow.h
+@@ -30,8 +30,12 @@
+ #include <ui/ANativeObjectBase.h>
+ #include <ui/Rect.h>
+ 
++#ifdef STE_SAMSUNG_HARDWARE
++#define NUM_FRAME_BUFFERS 3
++#else
+ #define MIN_NUM_FRAME_BUFFERS  2
+ #define MAX_NUM_FRAME_BUFFERS  3
++#endif
+ 
+ extern "C" EGLNativeWindowType android_createDisplaySurface(void);
+ 
+@@ -80,7 +84,11 @@ private:
+     framebuffer_device_t* fbDev;
+     alloc_device_t* grDev;
+ 
++#ifdef STE_SAMSUNG_HARDWARE
++    sp<NativeBuffer> buffers[NUM_FRAME_BUFFERS];
++#else
+     sp<NativeBuffer> buffers[MAX_NUM_FRAME_BUFFERS];
++#endif
+     sp<NativeBuffer> front;
+     
+     mutable Mutex mutex;
+diff --git a/libs/ui/FramebufferNativeWindow.cpp b/libs/ui/FramebufferNativeWindow.cpp
+index 918f2e7..6114115 100644
+--- a/libs/ui/FramebufferNativeWindow.cpp
++++ b/libs/ui/FramebufferNativeWindow.cpp
+@@ -93,12 +93,16 @@ FramebufferNativeWindow::FramebufferNativeWindow()
+         mUpdateOnDemand = (fbDev->setUpdateRect != 0);
+         
+         // initialize the buffer FIFO
++#ifdef STE_SAMSUNG_HARDWARE
++        mNumBuffers = NUM_FRAME_BUFFERS;
++#else
+         if(fbDev->numFramebuffers >= MIN_NUM_FRAME_BUFFERS &&
+            fbDev->numFramebuffers <= MAX_NUM_FRAME_BUFFERS){
+             mNumBuffers = fbDev->numFramebuffers;
+         } else {
+             mNumBuffers = MIN_NUM_FRAME_BUFFERS;
+         }
++#endif
+         mNumFreeBuffers = mNumBuffers;
+         mBufferHead = mNumBuffers-1;
+ 
+@@ -244,7 +248,11 @@ int FramebufferNativeWindow::dequeueBuffer(ANativeWindow* window,
+         self->mBufferHead = 0;
+ 
+     // wait for a free non-front buffer
++#ifdef STE_SAMSUNG_HARDWARE
++    while (self->mNumFreeBuffers < NUM_FRAME_BUFFERS) {
++#else
+     while (self->mNumFreeBuffers < 2) {
++#endif
+         self->mCondition.wait(self->mutex);
+     }
+     ALOG_ASSERT(self->buffers[index] != self->front);
 -- 
 2.1.0
 
