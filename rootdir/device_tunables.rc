@@ -47,6 +47,7 @@ on property:sys.boot_completed=1
     chown system system /sys/kernel/mali/mali_gpu_fullspeed
     chown system system /sys/kernel/mxt224e/sweep2wake
     chown system system /sys/kernel/mxt224e/threshold_t48
+    chown system system /sys/kernel/fast_charge/force_fast_charge
     chown system system /sys/module/dhd/parameters/dhdpm_fast
     chown system system /sys/module/mali/parameters/mali_l2_max_reads
     chown system system /sys/module/mali/parameters/pre_allocated_memory_size_max
