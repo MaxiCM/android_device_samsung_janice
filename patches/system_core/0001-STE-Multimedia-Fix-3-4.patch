@@ -92,10 +92,10 @@ index c6863bf..3f9c973 100755
  $(foreach system_core_init_define,$(SYSTEM_CORE_INIT_DEFINES), \
    $(if $($(system_core_init_define)), \
 diff --git a/init/init.c b/init/init.c
-index 8a7427d..30b87c8 100644
+index 1cce8d8..d2a880b 100644
 --- a/init/init.c
 +++ b/init/init.c
-@@ -101,6 +101,8 @@ static const char *ENV[32];
+@@ -102,6 +102,8 @@ static const char *ENV[32];
  
  static unsigned charging_mode = 0;
  
@@ -104,7 +104,7 @@ index 8a7427d..30b87c8 100644
  /* add_environment - add "key=value" to the current environment */
  int add_environment(const char *key, const char *val)
  {
-@@ -739,6 +741,12 @@ static void import_kernel_nv(char *name, int for_emulator)
+@@ -743,6 +745,12 @@ static void import_kernel_nv(char *name, int for_emulator)
  
      if (!strcmp(name,"qemu")) {
          strlcpy(qemu, value, sizeof(qemu));
@@ -117,7 +117,7 @@ index 8a7427d..30b87c8 100644
      } else if (!strcmp(name,BOARD_CHARGING_CMDLINE_NAME)) {
          strlcpy(battchg_pause, value, sizeof(battchg_pause));
      } else if (!strncmp(name, "androidboot.", 12) && name_len > 12) {
-@@ -1014,7 +1022,7 @@ static void selinux_initialize(void)
+@@ -1018,7 +1026,7 @@ static void selinux_initialize(void)
  static int charging_mode_booting(void)
  {
  #ifndef BOARD_CHARGING_MODE_BOOTING_LPM
@@ -126,8 +126,24 @@ index 8a7427d..30b87c8 100644
  #else
      int f;
      char cmb;
+diff --git a/libcutils/android_reboot.c b/libcutils/android_reboot.c
+index 30738d7..f213216 100644
+--- a/libcutils/android_reboot.c
++++ b/libcutils/android_reboot.c
+@@ -96,7 +96,11 @@ static void remount_ro(void)
+ 
+ 
+     /* Now poll /proc/mounts till it's done */
++#ifdef STE_HARDWARE
++    while (!remount_ro_done() && (cnt < 50)) {
++#else
+     while (!remount_ro_done() && (cnt < 3600)) {
++#endif
+         usleep(100000);
+         cnt++;
+     }
 diff --git a/libutils/Android.mk b/libutils/Android.mk
-index 4127b99..bc1b43a 100644
+index 035846b..6cdee0a 100644
 --- a/libutils/Android.mk
 +++ b/libutils/Android.mk
 @@ -44,6 +44,12 @@ commonSources:= \
@@ -174,5 +190,5 @@ index 0000000..1f2ffaa
 +
 +}; // namespace android
 -- 
-2.1.0
+2.5.0
 

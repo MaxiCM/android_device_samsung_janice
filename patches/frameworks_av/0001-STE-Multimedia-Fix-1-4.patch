@@ -61,10 +61,10 @@ index b57b491..df23858 100644
 diff --git a/media/libstagefright/ACodec.cpp b/media/libstagefright/ACodec.cpp
 old mode 100644
 new mode 100755
-index a110eae..2465775
+index 607b7b0..a16eea3
 --- a/media/libstagefright/ACodec.cpp
 +++ b/media/libstagefright/ACodec.cpp
-@@ -603,11 +603,16 @@ status_t ACodec::allocateBuffersOnPort(OMX_U32 portIndex) {
+@@ -604,11 +604,16 @@ status_t ACodec::allocateBuffersOnPort(OMX_U32 portIndex) {
  
      status_t err;
      if (mNativeWindow != NULL && portIndex == kPortIndexOutput) {
@@ -81,7 +81,7 @@ index a110eae..2465775
      } else {
          OMX_PARAM_PORTDEFINITIONTYPE def;
          InitOMXParams(&def);
-@@ -737,7 +742,11 @@ status_t ACodec::configureOutputBuffersFromNativeWindow(
+@@ -740,7 +745,11 @@ status_t ACodec::configureOutputBuffersFromNativeWindow(
              mNativeWindow.get(),
              def.format.video.nFrameWidth,
              def.format.video.nFrameHeight,
@@ -93,7 +93,7 @@ index a110eae..2465775
  #endif
  
      if (err != 0) {
-@@ -1362,6 +1371,12 @@ status_t ACodec::configureCodec(
+@@ -1372,6 +1381,12 @@ status_t ACodec::configureCodec(
      sp<AMessage> outputFormat = mNotify->dup(); // will use this for kWhatOutputFormatChanged
  
      mIsEncoder = encoder;
@@ -106,7 +106,7 @@ index a110eae..2465775
  
      status_t err = setComponentRole(encoder /* isEncoder */, mime);
  
-@@ -4961,7 +4976,7 @@ bool ACodec::BaseState::onOMXFillBufferDone(
+@@ -4974,7 +4989,7 @@ bool ACodec::BaseState::onOMXFillBufferDone(
                  mCodec->mSkipCutBuffer->submit(info->mData);
              }
              info->mData->meta()->setInt64("timeUs", timeUs);
@@ -199,7 +199,7 @@ index 47455ca..1c49be2 100644
  
  status_t MuxOMX::setParameter(
 diff --git a/media/libstagefright/OMXCodec.cpp b/media/libstagefright/OMXCodec.cpp
-index 79a5864..dd9cb0c 100644
+index 3706e9b..11450ac 100644
 --- a/media/libstagefright/OMXCodec.cpp
 +++ b/media/libstagefright/OMXCodec.cpp
 @@ -315,6 +315,20 @@ static int CompareSoftwareCodecsFirst(
@@ -287,7 +287,7 @@ index 79a5864..dd9cb0c 100644
              && portIndex == kPortIndexInput) {
          err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexInput, OMX_TRUE);
          if (err != OK) {
-@@ -2295,6 +2337,12 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
+@@ -2298,6 +2340,12 @@ status_t OMXCodec::allocateOutputBuffersFromNativeWindow() {
              frameWidth,
              frameHeight,
              def.format.video.eColorFormat);
@@ -470,11 +470,30 @@ index 597167f..a85ad72 100644
  uint8_t *ColorConverter::initClip() {
      static const signed kClipMin = -278;
      static const signed kClipMax = 535;
+diff --git a/media/libstagefright/omx/GraphicBufferSource.cpp b/media/libstagefright/omx/GraphicBufferSource.cpp
+index 44c7edc..7815d60 100644
+--- a/media/libstagefright/omx/GraphicBufferSource.cpp
++++ b/media/libstagefright/omx/GraphicBufferSource.cpp
+@@ -269,12 +269,14 @@ void GraphicBufferSource::codecBufferEmptied(OMX_BUFFERHEADERTYPE* header) {
+         } else if (type == kMetadataBufferTypeGraphicBuffer) {
+             GraphicBuffer *buffer;
+             memcpy(&buffer, data + 4, sizeof(buffer));
++#ifndef STE_HARDWARE
+             if (buffer != codecBuffer.mGraphicBuffer.get()) {
+                 // should never happen
+                 ALOGE("codecBufferEmptied: buffer is %p, expected %p",
+                         buffer, codecBuffer.mGraphicBuffer.get());
+                 CHECK(!"codecBufferEmptied: mismatched buffer");
+             }
++#endif
+         }
+     }
+ 
 diff --git a/media/libstagefright/omx/OMXNodeInstance.cpp b/media/libstagefright/omx/OMXNodeInstance.cpp
-index 83433de..e829220 100644
+index 00f3b60..47d397a 100644
 --- a/media/libstagefright/omx/OMXNodeInstance.cpp
 +++ b/media/libstagefright/omx/OMXNodeInstance.cpp
-@@ -718,13 +718,15 @@ status_t OMXNodeInstance::useGraphicBuffer(
+@@ -719,13 +719,15 @@ status_t OMXNodeInstance::useGraphicBuffer(
  
      // See if the newer version of the extension is present.
      OMX_INDEXTYPE index;
@@ -492,7 +511,7 @@ index 83433de..e829220 100644
          "OMX.google.android.index.useAndroidNativeBuffer");
      OMX_ERRORTYPE err = OMX_GetExtensionIndex(mHandle, name, &index);
 diff --git a/services/audioflinger/AudioFlinger.cpp b/services/audioflinger/AudioFlinger.cpp
-index 8b48764..a19d0a0 100644
+index 0c9b646..44f768d 100644
 --- a/services/audioflinger/AudioFlinger.cpp
 +++ b/services/audioflinger/AudioFlinger.cpp
 @@ -193,11 +193,14 @@ static int load_audio_interface(const char *if_name, audio_hw_device_t **dev)
@@ -510,7 +529,7 @@ index 8b48764..a19d0a0 100644
      return 0;
  
  out:
-@@ -1866,6 +1869,7 @@ audio_module_handle_t AudioFlinger::loadHwModule_l(const char *name)
+@@ -1874,6 +1877,7 @@ audio_module_handle_t AudioFlinger::loadHwModule_l(const char *name)
      {  // scope for auto-lock pattern
          AutoMutex lock(mHardwareLock);
  
@@ -518,7 +537,7 @@ index 8b48764..a19d0a0 100644
          if (0 == mAudioHwDevs.size()) {
              mHardwareStatus = AUDIO_HW_GET_MASTER_VOLUME;
              if (NULL != dev->get_master_volume) {
-@@ -1883,6 +1887,7 @@ audio_module_handle_t AudioFlinger::loadHwModule_l(const char *name)
+@@ -1891,6 +1895,7 @@ audio_module_handle_t AudioFlinger::loadHwModule_l(const char *name)
                  }
              }
          }
@@ -526,7 +545,7 @@ index 8b48764..a19d0a0 100644
  
          mHardwareStatus = AUDIO_HW_SET_MASTER_VOLUME;
          if ((NULL != dev->set_master_volume) &&
-@@ -1891,12 +1896,14 @@ audio_module_handle_t AudioFlinger::loadHwModule_l(const char *name)
+@@ -1899,12 +1904,14 @@ audio_module_handle_t AudioFlinger::loadHwModule_l(const char *name)
                      AudioHwDevice::AHWD_CAN_SET_MASTER_VOLUME);
          }
  
@@ -541,7 +560,7 @@ index 8b48764..a19d0a0 100644
  
          mHardwareStatus = AUDIO_HW_IDLE;
      }
-@@ -2152,7 +2159,12 @@ status_t AudioFlinger::openOutput(audio_module_handle_t module,
+@@ -2160,7 +2167,12 @@ status_t AudioFlinger::openOutput(audio_module_handle_t module,
          thread->audioConfigChanged(AudioSystem::OUTPUT_OPENED);
  
          // the first primary output opened designates the primary hw device
@@ -569,5 +588,5 @@ index 3079454..b82c4c7 100644
                                             delayMs);
  }
 -- 
-2.1.0
+2.5.0
 

@@ -319,6 +319,35 @@ index 20466b6..4fdb425 100644
  {
  public:
      static const sp<Fence> NO_FENCE;
+diff --git a/include/ui/FramebufferNativeWindow.h b/include/ui/FramebufferNativeWindow.h
+index 5cd8101..14def01 100644
+--- a/include/ui/FramebufferNativeWindow.h
++++ b/include/ui/FramebufferNativeWindow.h
+@@ -30,8 +30,12 @@
+ #include <ui/ANativeObjectBase.h>
+ #include <ui/Rect.h>
+ 
++#ifdef STE_SAMSUNG_HARDWARE
++#define NUM_FRAME_BUFFERS 3
++#else
+ #define MIN_NUM_FRAME_BUFFERS  2
+ #define MAX_NUM_FRAME_BUFFERS  3
++#endif
+ 
+ extern "C" EGLNativeWindowType android_createDisplaySurface(void);
+ 
+@@ -80,7 +84,11 @@ private:
+     framebuffer_device_t* fbDev;
+     alloc_device_t* grDev;
+ 
++#ifdef STE_SAMSUNG_HARDWARE
++    sp<NativeBuffer> buffers[NUM_FRAME_BUFFERS];
++#else
+     sp<NativeBuffer> buffers[MAX_NUM_FRAME_BUFFERS];
++#endif
+     sp<NativeBuffer> front;
+     
+     mutable Mutex mutex;
 diff --git a/include/ui/GraphicBuffer.h b/include/ui/GraphicBuffer.h
 index 3a5b10d..6f303e5 100644
 --- a/include/ui/GraphicBuffer.h
@@ -487,10 +516,23 @@ index 9770da2..033e764 100644
  
  # Executed only on QCOM BSPs
 diff --git a/libs/gui/BufferQueueProducer.cpp b/libs/gui/BufferQueueProducer.cpp
-index 6f76019..d91159f 100644
+index 6f76019..31cf401 100644
 --- a/libs/gui/BufferQueueProducer.cpp
 +++ b/libs/gui/BufferQueueProducer.cpp
-@@ -277,7 +277,9 @@ status_t BufferQueueProducer::dequeueBuffer(int *outSlot,
+@@ -204,7 +204,12 @@ status_t BufferQueueProducer::waitForFreeSlotThenRelock(const char* caller,
+             const int newUndequeuedCount =
+                 maxBufferCount - (dequeuedCount + 1);
+             const int minUndequeuedCount =
++#ifdef STE_HARDWARE
++                // HACK: for some reason, we need to reduce min undequeue for screen recording
++                mCore->getMinUndequeuedBufferCountLocked(false);
++#else
+                 mCore->getMinUndequeuedBufferCountLocked(async);
++#endif
+             if (newUndequeuedCount < minUndequeuedCount) {
+                 BQ_LOGE("%s: min undequeued buffer count (%d) exceeded "
+                         "(dequeued=%d undequeued=%d)",
+@@ -277,7 +282,9 @@ status_t BufferQueueProducer::dequeueBuffer(int *outSlot,
          if (format == 0) {
              format = mCore->mDefaultBufferFormat;
          }
@@ -756,6 +798,39 @@ index 778df4e..4ae5f4f 100644
  static void mtxMul(float out[16], const float a[16], const float b[16]) {
      out[0] = a[0]*b[0] + a[4]*b[1] + a[8]*b[2] + a[12]*b[3];
      out[1] = a[1]*b[0] + a[5]*b[1] + a[9]*b[2] + a[13]*b[3];
+diff --git a/libs/ui/FramebufferNativeWindow.cpp b/libs/ui/FramebufferNativeWindow.cpp
+index 918f2e7..6114115 100644
+--- a/libs/ui/FramebufferNativeWindow.cpp
++++ b/libs/ui/FramebufferNativeWindow.cpp
+@@ -93,12 +93,16 @@ FramebufferNativeWindow::FramebufferNativeWindow()
+         mUpdateOnDemand = (fbDev->setUpdateRect != 0);
+         
+         // initialize the buffer FIFO
++#ifdef STE_SAMSUNG_HARDWARE
++        mNumBuffers = NUM_FRAME_BUFFERS;
++#else
+         if(fbDev->numFramebuffers >= MIN_NUM_FRAME_BUFFERS &&
+            fbDev->numFramebuffers <= MAX_NUM_FRAME_BUFFERS){
+             mNumBuffers = fbDev->numFramebuffers;
+         } else {
+             mNumBuffers = MIN_NUM_FRAME_BUFFERS;
+         }
++#endif
+         mNumFreeBuffers = mNumBuffers;
+         mBufferHead = mNumBuffers-1;
+ 
+@@ -244,7 +248,11 @@ int FramebufferNativeWindow::dequeueBuffer(ANativeWindow* window,
+         self->mBufferHead = 0;
+ 
+     // wait for a free non-front buffer
++#ifdef STE_SAMSUNG_HARDWARE
++    while (self->mNumFreeBuffers < NUM_FRAME_BUFFERS) {
++#else
+     while (self->mNumFreeBuffers < 2) {
++#endif
+         self->mCondition.wait(self->mutex);
+     }
+     ALOG_ASSERT(self->buffers[index] != self->front);
 diff --git a/libs/ui/PixelFormat.cpp b/libs/ui/PixelFormat.cpp
 index a716949..cbd0063 100644
 --- a/libs/ui/PixelFormat.cpp
@@ -948,68 +1023,6 @@ index ca3f027..643f930 100644
          return result;
      }
  
-diff --git a/include/ui/FramebufferNativeWindow.h b/include/ui/FramebufferNativeWindow.h
-index 5cd8101..14def01 100644
---- a/include/ui/FramebufferNativeWindow.h
-+++ b/include/ui/FramebufferNativeWindow.h
-@@ -30,8 +30,12 @@
- #include <ui/ANativeObjectBase.h>
- #include <ui/Rect.h>
- 
-+#ifdef STE_SAMSUNG_HARDWARE
-+#define NUM_FRAME_BUFFERS 3
-+#else
- #define MIN_NUM_FRAME_BUFFERS  2
- #define MAX_NUM_FRAME_BUFFERS  3
-+#endif
- 
- extern "C" EGLNativeWindowType android_createDisplaySurface(void);
- 
-@@ -80,7 +84,11 @@ private:
-     framebuffer_device_t* fbDev;
-     alloc_device_t* grDev;
- 
-+#ifdef STE_SAMSUNG_HARDWARE
-+    sp<NativeBuffer> buffers[NUM_FRAME_BUFFERS];
-+#else
-     sp<NativeBuffer> buffers[MAX_NUM_FRAME_BUFFERS];
-+#endif
-     sp<NativeBuffer> front;
-     
-     mutable Mutex mutex;
-diff --git a/libs/ui/FramebufferNativeWindow.cpp b/libs/ui/FramebufferNativeWindow.cpp
-index 918f2e7..6114115 100644
---- a/libs/ui/FramebufferNativeWindow.cpp
-+++ b/libs/ui/FramebufferNativeWindow.cpp
-@@ -93,12 +93,16 @@ FramebufferNativeWindow::FramebufferNativeWindow()
-         mUpdateOnDemand = (fbDev->setUpdateRect != 0);
-         
-         // initialize the buffer FIFO
-+#ifdef STE_SAMSUNG_HARDWARE
-+        mNumBuffers = NUM_FRAME_BUFFERS;
-+#else
-         if(fbDev->numFramebuffers >= MIN_NUM_FRAME_BUFFERS &&
-            fbDev->numFramebuffers <= MAX_NUM_FRAME_BUFFERS){
-             mNumBuffers = fbDev->numFramebuffers;
-         } else {
-             mNumBuffers = MIN_NUM_FRAME_BUFFERS;
-         }
-+#endif
-         mNumFreeBuffers = mNumBuffers;
-         mBufferHead = mNumBuffers-1;
- 
-@@ -244,7 +248,11 @@ int FramebufferNativeWindow::dequeueBuffer(ANativeWindow* window,
-         self->mBufferHead = 0;
- 
-     // wait for a free non-front buffer
-+#ifdef STE_SAMSUNG_HARDWARE
-+    while (self->mNumFreeBuffers < NUM_FRAME_BUFFERS) {
-+#else
-     while (self->mNumFreeBuffers < 2) {
-+#endif
-         self->mCondition.wait(self->mutex);
-     }
-     ALOG_ASSERT(self->buffers[index] != self->front);
 -- 
-2.1.0
+2.5.0
 
