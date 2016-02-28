@@ -478,7 +478,7 @@ index 44c7edc..7815d60 100644
          } else if (type == kMetadataBufferTypeGraphicBuffer) {
              GraphicBuffer *buffer;
              memcpy(&buffer, data + 4, sizeof(buffer));
-+#ifndef STE_HARDWARE
++#ifdef STE_HARDWARE
              if (buffer != codecBuffer.mGraphicBuffer.get()) {
                  // should never happen
                  ALOGE("codecBufferEmptied: buffer is %p, expected %p",
