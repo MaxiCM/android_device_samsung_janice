@@ -1,0 +1,195 @@
+diff --git a/core/res/res/values/config.xml b/core/res/res/values/config.xml
+index d8e1b1e..c40ba4b 100755
+--- a/core/res/res/values/config.xml
++++ b/core/res/res/values/config.xml
+@@ -2390,6 +2390,15 @@
+     <!-- Boolean to enable the advanced settings switch -->
+     <bool name="config_advancedSettingsMode">true</bool>
+ 
++    <!-- If there is no sysfs-based control mechanism, enable this -->
++    <bool name="useCameraInterface">true</bool>
++    <!-- Full path to the sysfs toggle -->
++    <string name="flashDevice"></string>  
++    <!-- Off setting -->
++    <integer name="valueOff">0</integer>
++    <!-- On setting -->
++    <integer name="valueOn">1</integer>
++
+     <!-- Default, comma-delimited, quick settings tiles. See QSConstants.java for a list of all available tiles -->
+     <string name="config_defaultQuickSettingsTiles">wifi,bt,cell,airplane,rotation,flashlight,location,cast,visualizer,hotspot,live_display</string>
+ 
+diff --git a/core/res/res/values/symbols.xml b/core/res/res/values/symbols.xml
+index bb64578..f60f85d 100644
+--- a/core/res/res/values/symbols.xml
++++ b/core/res/res/values/symbols.xml
+@@ -2166,6 +2166,11 @@
+   <!-- From SignalStrength -->
+   <java-symbol type="integer" name="config_LTE_RSRP_threshold_type" />
+ 
++  <java-symbol type="bool" name="useCameraInterface" />
++  <java-symbol type="string" name="flashDevice" />
++  <java-symbol type="integer" name="valueOff" />
++  <java-symbol type="integer" name="valueOn" />
++
+   <java-symbol type="string" name="android_system_label" />
+   <java-symbol type="string" name="system_error_wipe_data" />
+   <java-symbol type="string" name="system_error_manufacturer" />
+diff --git a/services/core/java/com/android/server/TorchService.java b/services/core/java/com/android/server/TorchService.java
+index 766d7ef..f247c09 100644
+--- a/services/core/java/com/android/server/TorchService.java
++++ b/services/core/java/com/android/server/TorchService.java
+@@ -45,7 +45,10 @@ import android.util.Size;
+ import android.util.SparseArray;
+ import android.view.Surface;
+ 
++import java.io.File;
+ import java.io.FileDescriptor;
++import java.io.FileWriter;
++import java.io.IOException;
+ import java.io.PrintWriter;
+ import java.util.ArrayList;
+ 
+@@ -94,6 +97,13 @@ public class TorchService extends ITorchService.Stub {
+     private SurfaceTexture mSurfaceTexture;
+     private Surface mSurface;
+ 
++    private static int mValueOff;
++    private static int mValueOn;
++    private static String mFlashDevice;
++    private static boolean mUseCameraInterface;
++
++    private FileWriter mFlashDeviceWriter = null;
++
+     private boolean mReceiverRegistered;
+     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+         @Override
+@@ -120,8 +130,14 @@ public class TorchService extends ITorchService.Stub {
+ 
+     public TorchService(Context context) {
+         mContext = context;
++
++        mValueOff = mContext.getResources().getInteger(R.integer.valueOff);
++        mValueOn = mContext.getResources().getInteger(R.integer.valueOn);
++        mFlashDevice = mContext.getResources().getString(R.string.flashDevice);
++        mUseCameraInterface = mContext.getResources().getBoolean(R.bool.useCameraInterface);
++
+         mCamerasInUse = new SparseArray<CameraUserRecord>();
+-        mCameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
++        mCameraManager = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
+         initialize();
+     }
+ 
+@@ -134,9 +150,10 @@ public class TorchService extends ITorchService.Stub {
+         }
+ 
+         if (mTorchCameraId != -1) {
+-            ensureHandler();
+-            mCameraManager.registerAvailabilityCallback(mAvailabilityCallback, mHandler);
+-        }
++            if (mUseCameraInterface) {
++                mCameraManager.registerAvailabilityCallback(mAvailabilityCallback, mHandler);
++            }
++        }       
+     }
+ 
+     private void setNotificationShown(boolean show) {
+@@ -200,7 +217,7 @@ public class TorchService extends ITorchService.Stub {
+                 // As a synchronous broadcast is an expensive operation, only
+                 // attempt to kill torch if it actually grabbed the camera before
+                 if (cameraId == mTorchCameraId) {
+-                    if (mCamerasInUse.get(cameraId) != null) {
++                    if (!mUseCameraInterface || mCamerasInUse.get(cameraId) != null) {
+                         if (DEBUG) Log.d(TAG, "Need to kill torch");
+                         needTorchShutdown = true;
+                     }
+@@ -262,7 +279,12 @@ public class TorchService extends ITorchService.Stub {
+     public synchronized boolean isAvailable() {
+         mContext.enforceCallingOrSelfPermission(
+                 Manifest.permission.ACCESS_TORCH_SERVICE, null);
+-        return mTorchAvailable;
++        if (mUseCameraInterface) {
++            return mTorchAvailable;
++        } else {
++            File f = new File(mFlashDevice);
++            return f.exists() && f.canWrite();
++        }
+     }
+ 
+     @Override
+@@ -380,31 +402,53 @@ public class TorchService extends ITorchService.Stub {
+             synchronized (this) {
+                 enabled = mTorchEnabled && !forceDisable;
+             }
+-            if (enabled) {
+-                if (mCameraDevice == null) {
+-                    if (!mOpeningCamera) {
++            if (mUseCameraInterface) {
++                if (enabled) {
++                    if (mCameraDevice == null) {
+                         startDevice();
++                        return;
++                    }
++                    if (mSession == null) {
++                        startSession();
++                        return;
++                    }
++                    if (mFlashlightRequest == null) {
++                        CaptureRequest.Builder builder = mCameraDevice.createCaptureRequest(
++                                CameraDevice.TEMPLATE_PREVIEW);
++                        builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
++                        builder.addTarget(mSurface);
++                        CaptureRequest request = builder.build();
++                        mSession.capture(request, null, mHandler);
++                        mFlashlightRequest = request;
++                    }
++                } else {
++                    if (mCameraDevice != null) {
++                        mCameraDevice.close();
++                        teardownTorch();
+                     }
+-                    return;
+-                }
+-                if (mSession == null) {
+-                    startSession();
+-                    return;
+-                }
+-                if (mFlashlightRequest == null) {
+-                    CaptureRequest.Builder builder = mCameraDevice.createCaptureRequest(
+-                            CameraDevice.TEMPLATE_PREVIEW);
+-                    builder.set(CaptureRequest.FLASH_MODE, CameraMetadata.FLASH_MODE_TORCH);
+-                    builder.addTarget(mSurface);
+-                    CaptureRequest request = builder.build();
+-                    mSession.capture(request, null, mHandler);
+-                    mFlashlightRequest = request;
+-                    dispatchStateChange(true);
+                 }
+             } else {
+-                teardownTorch();
++                // Devices with just a sysfs toggle
++                if (mFlashDeviceWriter == null) {
++                    try {
++                        mFlashDeviceWriter = new FileWriter(mFlashDevice);
++                    } catch (IOException e) {
++                        Log.e(TAG, "Error creating new mFlashDeviceWriter");
++                        handleError();
++                    }
++                }
++                try {
++                    mFlashDeviceWriter.write(String.valueOf(enabled ? mValueOn : mValueOff));
++                    mFlashDeviceWriter.flush();
++                    if (!enabled) {                        
++                        mFlashDeviceWriter.close();
++                        mFlashDeviceWriter = null;
++                    }
++                } catch (IOException e) {
++                    Log.e(TAG, "Error writing to flashlight sysfs", e);
++                    handleError();
++            	}
+             }
+-
+         } catch (CameraAccessException|IllegalStateException|UnsupportedOperationException e) {
+             Log.e(TAG, "Error in updateFlashlight", e);
+             handleError();
+-- 
+2.5.0
+
