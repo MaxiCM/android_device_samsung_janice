@@ -31,7 +31,7 @@ const char fstab_original_a[] =
 const char fstab_system_f2fs[] = "/dev/block/mmcblk0p3                       /system              f2fs    ro                                                    wait\n";
 const char fstab_system_ext4[] = "/dev/block/mmcblk0p3                       /system              ext4    ro                                                    wait\n";
 
-const char fstab_cache_f2fs[] = "/dev/block/mmcblk0p4                       /cache              f2fs      rw,discard,nosuid,nodev,noatime,nodiratime,flush_merge,background_gc=off,inline_xattr,active_logs=2                                      wait\n";
+const char fstab_cache_f2fs[] = "/dev/block/mmcblk0p4                       /cache              f2fs      rw,discard,nosuid,nodev,noatime,nodiratime,flush_merge,inline_data,inline_xattr                                      wait\n";
 const char fstab_cache_ext4[] = "/dev/block/mmcblk0p4                       /cache              ext4      noatime,nosuid,nodev,journal_async_commit,errors=panic                            wait,check\n";
 
 const char fstab_original_b[] =
@@ -39,8 +39,8 @@ const char fstab_original_b[] =
 "/dev/block/mmcblk0p7                    /efs                ext4      noatime,nosuid,nodev,journal_async_commit,errors=panic                            wait,check\n"
 ;
 
-const char fstab_data_f2fs[] = "/dev/block/mmcblk0p5                    /data               f2fs      rw,discard,nosuid,nodev,noatime,nodiratime,flush_merge,background_gc=off,inline_xattr,active_logs=2                    wait,nonremovable,encryptable=/efs/metadata\n";
-const char fstab_data_ext4[] = "/dev/block/mmcblk0p5                    /data               ext4      noatime,nosuid,nodev,discard,noauto_da_alloc,journal_async_commit,errors=panic    wait,check,encryptable=/efs/metadata\n";
+const char fstab_data_f2fs[] = "/dev/block/mmcblk0p5                    /data               f2fs      rw,discard,nosuid,nodev,noatime,nodiratime,flush_merge,inline_xattr                    wait,nonremovable,encryptable=/efs/metadata\n";
+const char fstab_data_ext4[] = "/dev/block/mmcblk0p5                    /data               ext4      noatime,nosuid,nodev,noauto_da_alloc,journal_async_commit,errors=panic    wait,check,encryptable=/efs/metadata\n";
 
 const char fstab_original_c[] =
 "/devices/sdi2/mmc_host/mmc0/mmc0        auto                auto      defaults                                                                          voldmanaged=sdcard0:8,nonremovable,noemulatedsd\n"
