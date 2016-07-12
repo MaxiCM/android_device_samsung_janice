@@ -34,6 +34,9 @@ ro.ota.manifest=http://maxicm.com/janice/ota.xml
 # STE: Camera file path configuration
 ste.cam.ext.cfg.path.secondary=/system/usr/share/camera/config_file/samsung_s5k4ecgx_janice.dat
 
+# Enable AAC 5.1 output
+media.aac_51_output_enabled=true
+
 # Hardware info
 ro.device.chipset=ST-Ericsson NovaThor U8500 (45nm)
 ro.device.cpu=ARMv7 1GHz Dual-core ARM Cortex-A9

@@ -57,7 +57,8 @@ on post-fs-data
 
     mkdir /data/media 0770 media_rw media_rw
     chown media_rw media_rw /data/media
-    # give system access to wpa_supplicant.conf for backup and restore
+
+    # Give system access to wpa_supplicant.conf for backup and restore
     mkdir /data/misc/bluetoothd 0770 bluetooth bluetooth
     mkdir /data/misc/bluetooth 0770 system system
     mkdir /data/misc/wifi 0770 wifi wifi

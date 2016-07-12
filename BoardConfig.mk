@@ -1,4 +1,4 @@
--include device/samsung/u8500-common/BoardCommonConfig.mk
+-include device/samsung/u8500-common/BoardConfigCommon.mk
 
 TARGET_OTA_ASSERT_DEVICE := janice,i9070,GT-I9070
 

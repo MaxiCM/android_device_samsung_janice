@@ -15,8 +15,6 @@ on early-fs
     # J4FS(lfs) mount points.
     mkdir /mnt 0775 root root
     mkdir /mnt/.lfs 0755 root root
-	
-	# Install Kernel Module
     insmod /system/lib/modules/j4fs.ko
     insmod /system/lib/modules/param.ko
 
