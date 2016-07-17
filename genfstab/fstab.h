@@ -46,7 +46,7 @@ const char fstab_original_c[] =
 "/devices/sdi2/mmc_host/mmc0/mmc0*        auto                auto      defaults                                                                          voldmanaged=sdcard0:8,nonremovable,noemulatedsd\n"
 "/devices/sdi0/mmc_host/mmc1/mmc1*        auto                auto      defaults                                                                          voldmanaged=sdcard1:auto\n"
 "/dev/block/mmcblk0p15                   /boot               emmc      defaults                                                                          recoveryonly\n"
-"/dev/block/zram0                        none                swap      defaults                                                                          zramsize=268435456\n"
+"/dev/block/zram0                        none                swap      defaults                                                                          zramsize=419430400\n"
 ;
 
 #endif
