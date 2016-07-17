@@ -70,18 +70,18 @@ index e683d9b..628d61d 100644
          return mTtyManager.isTtySupported();
      }
 diff --git a/src/com/android/server/telecom/ProximitySensorManager.java b/src/com/android/server/telecom/ProximitySensorManager.java
-index 217dd3b..8d49507 100644
+index 5b82c43..285f1a4 100644
 --- a/src/com/android/server/telecom/ProximitySensorManager.java
 +++ b/src/com/android/server/telecom/ProximitySensorManager.java
-@@ -67,6 +67,8 @@ public class ProximitySensorManager extends CallsManagerListenerBase {
+@@ -63,6 +63,8 @@ public class ProximitySensorManager extends CallsManagerListenerBase {
          if (!mProximityWakeLock.isHeld()) {
              Log.i(this, "Acquiring proximity wake lock");
              mProximityWakeLock.acquire();
 +            // Reset audio stream volume when call is off hook
 +            CallsManager.getInstance().resetAudioStreamVolume();
-             if (mHardware.isSupported(CMHardwareManager.FEATURE_TAP_TO_WAKE)) {
-                 mWasTapToWakeEnabled =
-                         mHardware.get(CMHardwareManager.FEATURE_TAP_TO_WAKE);
+         } else {
+             Log.i(this, "Proximity wake lock already acquired");
+         }
 -- 
-2.5.0
+1.7.9.5
 
